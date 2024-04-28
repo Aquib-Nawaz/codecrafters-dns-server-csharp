@@ -26,7 +26,7 @@ public class DNSParser
         int ra = 0, rz=0, rc=0;
         header[3] = (byte)((ra<<7)|(rz<<4)|rc); 
         
-        int na=0;
+        int na=nq;
         header[4] = (byte)(nq >> 8);
         header[5] = (byte)(nq & 0xFF);
         header[6] = (byte)(na >> 8);
@@ -41,26 +41,28 @@ public class DNSParser
         return header;
     }
 
+    private int populateQuestion(int reqIdx, List<byte> questions){
+        int labelLength = request[reqIdx];
+        while(labelLength!=0){
+            for(int j=0; j<=labelLength; j++){
+                questions.Add(request[reqIdx++]);
+            }
+            labelLength = request[reqIdx];
+        }
+        questions.Add(0);
+
+        Utility.addBigEndianToList(questions, 1, 2);
+        Utility.addBigEndianToList(questions, 1, 2);
+        reqIdx+=5;
+        return reqIdx;
+    }
+
     public byte [] getQuestion(){
         List<byte> questions = new List<byte>();
         int reqIdx = 12;
         try{
             for(int i=0; i<nq; i++){
-                int labelLength = request[reqIdx];
-                while(labelLength!=0){
-                    for(int j=0; j<=labelLength; j++){
-                        questions.Add(request[reqIdx++]);
-                    }
-                    labelLength = request[reqIdx];
-                }
-                questions.Add(0);
-
-                questions.Add(0);
-                questions.Add(1);
-                
-                questions.Add(0);
-                questions.Add(1);
-                reqIdx+=5;
+               reqIdx = populateQuestion(reqIdx, questions);
             }
         }
         catch(IndexOutOfRangeException){
@@ -69,14 +71,42 @@ public class DNSParser
         return questions.ToArray();
     }
 
+    public byte [] getAnswers(){
+        List<byte> answers = new List<byte>();
+        int reqIdx = 12;
+        try{
+            for(int i=0; i<nq; i++){
+               reqIdx = populateQuestion(reqIdx, answers);
+               
+               int ttl = 60, length=4, ip=123456;
+
+               Utility.addBigEndianToList(answers, ttl, 4);
+               Utility.addBigEndianToList(answers, length, 2);
+               Utility.addBigEndianToList(answers, ip, 4);
+               
+            }
+        }
+        catch(IndexOutOfRangeException){
+            Console.Error.WriteLine("Errro: Malformed Request Recieved should be loneger than: "+reqIdx);
+        }
+
+        return answers.ToArray();
+    }
+
     public byte[] getResponse(){
         getHeader();
         byte [] question = getQuestion();
-        byte [] response = new byte[header.Length + question.Length];
+        byte [] answers = getAnswers();
+
+        byte [] response = new byte[header.Length + question.Length+ answers.Length];
+        
         Array.Copy(header, 0, response, 0,header.Length);
         Array.Copy(question, 0, response, header.Length, question.Length);
+        Array.Copy(answers, 0, response, header.Length+question.Length, answers.Length);
+
         Console.WriteLine($"Sending Response: {response.Length}");
         Utility.print2Hex(response);
+
         return response;
     }
 }

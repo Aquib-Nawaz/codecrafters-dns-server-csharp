@@ -17,4 +17,11 @@ public static class Utility
             }
         }
     }
+
+    public static void addBigEndianToList(List<byte> list, int value, int length){
+        for(int i=length-1; i>=0; i--){
+            list.Add((byte)((value >> (i*8)) & 0xFF));
+        }
+    
+    }
 }
