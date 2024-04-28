@@ -47,8 +47,18 @@ public class DNSParser
     private int populateQuestion(int reqIdx, List<byte> questions){
         int labelLength = request[reqIdx];
         while(labelLength!=0){
-            for(int j=0; j<=labelLength; j++){
-                questions.Add(request[reqIdx++]);
+            if((labelLength&0xC0)==0xC0){
+                int idx = (labelLength&0x3F << 8)|request[reqIdx+1];
+                reqIdx+=2;
+                labelLength = request[idx];
+                for(int j=0; j<=labelLength; j++){
+                    questions.Add(request[idx++]);
+                }
+            }
+            else{
+                for(int j=0; j<=labelLength; j++){
+                    questions.Add(request[reqIdx++]);
+                }
             }
             labelLength = request[reqIdx];
         }
