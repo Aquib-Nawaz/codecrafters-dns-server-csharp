@@ -21,13 +21,12 @@ while (true)
     // Receive data
     IPEndPoint sourceEndPoint = new IPEndPoint(IPAddress.Any, 0);
     byte[] receivedData = udpClient.Receive(ref sourceEndPoint);
-    string receivedString = Encoding.ASCII.GetString(receivedData);
 
-    Console.WriteLine($"Received {receivedData.Length} bytes from {sourceEndPoint}: {receivedString}");
-
+    Console.WriteLine($"Received {receivedData.Length} bytes from {sourceEndPoint} :");
+    Utility.print2Hex(receivedData);
     // Create an empty response
-    DNSHeader dNSHeader = new DNSHeader(receivedData);
-    byte[] response = dNSHeader.getResponse();
+    DNSParser dNSParser = new DNSParser(receivedData);
+    byte[] response = dNSParser.getResponse();
 
     // Send response
     udpClient.Send(response, response.Length, sourceEndPoint);
