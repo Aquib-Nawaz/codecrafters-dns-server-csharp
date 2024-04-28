@@ -20,10 +20,13 @@ public class DNSParser
         header[0] = request[0];
         header[1] = request[1];
         
-        int aa=0;
-        header[2] = (byte)((1<<7)|(0<<3)|(aa<<2)|(0<<1)|0);
+        int aa=0, opcode=(request[2]>>3)&0x0F, rd=request[2]&0x01;
+        header[2] = (byte)((1<<7)|(opcode<<3)|(aa<<2)|(0<<1)|rd);
         
         int ra = 0, rz=0, rc=0;
+        if(opcode!=0)
+            rc=4;
+            
         header[3] = (byte)((ra<<7)|(rz<<4)|rc); 
         
         int na=nq;
