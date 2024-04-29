@@ -6,7 +6,7 @@ namespace codecrafters_dns_server;
 public class DNSParser
 {
     private byte [] request;
-    private int id, nq;
+    public int id, nq;
     byte [] header = new byte[12];
 
     public DNSParser(byte [] req){
@@ -44,15 +44,18 @@ public class DNSParser
         return header;
     }
 
-    private int populateQuestion(int reqIdx, List<byte> questions){
+    public int populateQuestion(int reqIdx, List<byte> questions){
         int labelLength = request[reqIdx];
         while(labelLength!=0){
             if((labelLength&0xC0)==0xC0){
                 int idx = (labelLength&0x3F << 8)|request[reqIdx+1];
                 reqIdx+=2;
                 labelLength = request[idx];
-                for(int j=0; j<=labelLength; j++){
-                    questions.Add(request[idx++]);
+                while(labelLength!=0){
+                    for(int j=0; j<=labelLength; j++){
+                        questions.Add(request[idx++]);
+                    }
+                    labelLength = request[idx];
                 }
             }
             else{
@@ -84,14 +87,20 @@ public class DNSParser
         return questions.ToArray();
     }
 
-    public byte [] getAnswers(){
+    public byte [] getAnswers(uint []? queriedIps)
+    {
         List<byte> answers = new List<byte>();
         int reqIdx = 12;
         try{
             for(int i=0; i<nq; i++){
                reqIdx = populateQuestion(reqIdx, answers);
                
-               int ttl = 60, length=4, ip=123456;
+               int ttl = 60, length=4;
+               uint ip=123456;
+               
+               if(queriedIps != null && queriedIps.Length>i){
+                ip = queriedIps[i];
+               }
 
                Utility.addBigEndianToList(answers, ttl, 4);
                Utility.addBigEndianToList(answers, length, 2);
@@ -106,10 +115,10 @@ public class DNSParser
         return answers.ToArray();
     }
 
-    public byte[] getResponse(){
+    public byte[] getResponse(uint []? queriedIps = null){
         getHeader();
         byte [] question = getQuestion();
-        byte [] answers = getAnswers();
+        byte [] answers = getAnswers(queriedIps);
 
         byte [] response = new byte[header.Length + question.Length+ answers.Length];
         
@@ -119,6 +128,8 @@ public class DNSParser
 
         Console.WriteLine($"Sending Response: {response.Length}");
         Utility.print2Hex(response);
+
+        // Utility.WriteBinaryDataToFile(response, "bin.bin");
 
         return response;
     }
